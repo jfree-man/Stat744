@@ -18,7 +18,8 @@ library(scales)
 library(lubridate)
 
 #whole data set
-dat<-readr::read_csv("https://mac-theobio.github.io/DataViz/data/vaccine_data_online.csv", show_col_types = FALSE)
+dat <- readr::read_csv("https://mac-theobio.github.io/DataViz/data/vaccine_data_online.csv", show_col_types = FALSE)
+## BMB: might be better not to rely on the URL (download or use pins package); like spaces around "<-" (see R style guide)
 ```
 
 ```{r manipulate_data}
@@ -68,6 +69,8 @@ measles_less<-(measles
 
 My first plot represents the data better because it is uses a better information transfer method on Cleveland's hierarchy (i.e. position along a common scale, instead of area). In addition, the log scale helps to see the pattern of smaller values more clearly. The overlapping circles in Jia You's plot are misleading. The area corresponds to the number of recorded cases, and the centre of the circle corresponds to the respective year. However the overlapping circles creates increased colour saturation which leads the viewer to believe the number of recorded cases, especially pre-vaccine, appear higher than they actually are.
 
+**BMB**: good points.  Maybe add a vertical line (`geom_vline()`) or some more outstanding visual cue for start of vaccine (change line colour?)
+
 
 ### Second Plot (trying to replicate Jia You's plot)
 ```{r second_plot, fig.dim = c(12, 6)}
@@ -106,3 +109,7 @@ year_breaks = seq(min(measles[["year"]]), max(measles[["year"]])+1, by=5)
 ```
 
 I wasted a good amount of time trying to find interesting data to include, and landed on trying to replicate Jia You's plot. I struggled to replicate the legend. Is there a way to make the circles in the legend nested as in the graphic? I could also not figure out how to specify the sizes in the legend that would correspond to specific 'number of cases' values. For example, if I wanted to include the circle that corresponds to 1000 cases, how would I work back to determine how ggplot2 assigns the size for this number of cases?
+
+**BMB**: the `breaks` argument to `scale_size_area` should let you pick the values represented. I don't know a way of nesting the circles, offhand - seems difficult (although of course someone has done it on Stack Overflow! https://stackoverflow.com/questions/52612867/create-a-concentric-circle-legend-for-a-ggplot-bubble-chart )
+
+Mark: 2.2/3

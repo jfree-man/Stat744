@@ -1,0 +1,157 @@
+---
+title: "HW3"
+author: "Jennifer Freeman"
+date: "27/09/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+```
+
+```{r}
+
+# tried tabulizer package, extract_tables and extract_areas 
+# returned mostly garbage, possibly because the table is rotated in the pdf
+# dat <- extract_areas("HW3/Curtis_etal_2019.pdf", pages = 6, method = "stream")
+
+# resorted to copying table from web and saving as a txt file
+
+# tried to read in existing column names as character vectors
+# ##first header
+#  (dat1 <- read_tsv("blueberries.txt", n_max=0)
+#   %>% names()
+#  )
+# ##second  header
+#  (dat2 <- read_tsv("blueberries.txt", skip=1, n_max=0)
+#   %>% names()
+#  )
+#
+# for second header, had trailing "...#" after each column name even though
+# there was no trailing characters in the txt file
+# couldn't find any solutions
+
+
+# decided to manually type out column names
+# data groupings
+treat_time <- read.table(header = TRUE, text="
+Treatment Time
+Placebo Before
+HalfCup After
+OneCup Diff
+")
+
+# expand data groupings, order, and combine
+treat_time2 <- (treat_time 
+  %>% expand(Treatment, Time) # get all combinations of Treatment and Time
+  %>% arrange(match(Time, c("Before", "After", "Diff"))) # custom order Time to match data set
+  %>% arrange(match(Treatment, c("Placebo", "HalfCup", "OneCup" ))) # custom order Treatment to match data set
+  %>% unite("Treatment.Time", 1:2, sep = ".",) # combine Treatment and Time variables
+)
+
+# add additional column names, and transpose
+cnames <- c("Parameter", t(treat_time2), "P") 
+
+# read in txt file
+dat <- (read_tsv("blueberries.txt"
+                 , skip = 2
+                 , col_names = cnames # name columns with cnames
+                 )
+  # pivot longer all columns with confidence intervals
+  %>% pivot_longer(cols = -c("Parameter","P") , names_to = "Treatment.Time", values_to = "val")
+  # move second set of data values for HbA1c into new rows
+  %>% separate_rows(val, sep = "\\;") 
+  %>% mutate(Parameter = case_when(startsWith(val, " [") ~ "HbA1c, (mmol/mol)"# rename parameter values for both HbA1c values
+                                   , str_detect(Parameter, "%") ~ "HbA1c, %"
+                                   , TRUE ~ Parameter)
+             , val = str_replace_all(val, "\\[|\\]", ""), # remove square brackets
+             , val = str_trim(val, side = "left") # remove leading spaces
+             ) 
+  # separate confidence intervals out
+  %>% separate(val, into = c("Mean", "L_CI", "U_CI"), sep = "\\(|\\,")
+  %>% mutate(U_CI = as.numeric(str_remove(U_CI, "\\)[:print:]*$")) # remove trailing brackets and characters, convert to numeric
+             , Mean = as.numeric(str_replace(Mean, "–", "-")) # replace en dash with minus, convert to numeric
+             , L_CI = as.numeric(str_replace(L_CI, "–", "-")) # replace en dash with minus, convert to numeric
+             ) 
+   # separate treatment and time out
+  %>% separate(Treatment.Time, into = c("Treatment", "Time"), sep = "\\.")
+)
+
+# data with time difference removed
+dat2 <- (dat
+        %>% filter(Time != "Diff")
+  
+)
+
+# data with parameter names ordered by mean time difference for the one cup treatment group
+dat3<- (dat
+        %>% filter(Time == "Diff", Treatment == "OneCup")
+        %>% arrange(Mean)
+        %>% distinct(Parameter)
+)
+
+#data with only mean time difference data
+dat4 <- (dat
+         %>% filter(Time == "Diff")
+)
+
+```
+
+```{r, fig.dim=c(10,8)}
+gg1<-(ggplot(dat2, aes(y = Mean, x = factor(Time, levels = c("Before", "After")), 
+                       colour = factor(Treatment, levels = c("Placebo", "HalfCup", "OneCup"))))
+      + geom_point(aes(group = Treatment), size=4, alpha=0.7)
+      + geom_line(aes(group = Treatment))
+      + facet_grid(cols = vars(factor(Parameter, 
+                                      levels = t(dat3))))# use ordering from dat3
+      + facet_wrap(~ factor(Parameter, 
+                            levels = t(dat3)),# use ordering from dat3
+                   nrow=4, 
+                   scales="free_y") # individual y scales
+      + theme_bw()
+      + theme(legend.position = c(1,0),
+              legend.justification = c(1, 0), 
+              legend.title = element_blank())
+      + scale_color_brewer(palette = "Dark2")
+      + labs(x = "")
+      )
+
+print(gg1)
+
+```
+
+
+```{r, fig.dim=c(10,8)}
+gg2<-(ggplot(dat4, aes(y = Mean, x = factor(Treatment, levels = c("Placebo", "HalfCup", "OneCup"))))
+      + geom_point(aes(group = Treatment,
+                       colour = factor(Treatment, levels = c("Placebo", "HalfCup", "OneCup"))), 
+                   size=4
+                   )
+      + geom_errorbar(aes(ymin=L_CI, ymax=U_CI), width=0.3) # Use CI for error bars
+      + facet_grid(cols = vars(factor(Parameter)))
+      + facet_wrap(~ factor(Parameter), nrow=4, scales="free_y")
+      + theme_bw()
+      + theme(legend.position = c(1,0),
+              legend.justification = c(1, 0), 
+              legend.title = element_blank())
+      + scale_color_brewer(palette = "Dark2")
+      + labs(x = "", y="Mean 6 month difference (95% Confidence Intervals)")
+      )
+
+print(gg2)
+
+```
+
+Table 2 in **[1]** displays mean parameter values that were measured at 0 and 6 months for three treatment groups: Placebo, 1/2 cup blueberries/day and 1 cup of blueberries/day . 
+
+In the first plot I am trying to draw attention to the change in mean parameter values for each treatment group over the six month interval. I attempted to order the parameters in order of mean 6 month difference for the *OneCup* treatment group, but the order doesn't appear to be very meaningful. I wanted to display an ordering of the parameters that would range from decreasing slopes to increasing. The plot is maybe a little misleading because the largest changes for each parameter are depicted with the same slope and could be confusing unless you pay attention to the scales.
+
+In the second plot, I am trying compare the mean differences with 95% confidence intervals for each treatment group. It is much faster to view these values versus read them in a table and it can highlight interesting things. For example, the *HalfCup* treatment group looks on average different that then *Placebo* group for the TGs parameter.
+
+
+It might also be worth exploring this data by combining parameters that share the same units in one plot.
+
+
+### References
+
+**[1]** Peter J Curtis, Vera van der Velpen, Lindsey Berends, Amy Jennings, Martin Feelisch, A Margot Umpleby, Mark Evans, Bernadette O Fernandez, Mia S Meiss, Magdalena Minnion, John Potter, Anne-Marie Minihane, Colin D Kay, Eric B Rimm, Aedín Cassidy, Blueberries improve biomarkers of cardiometabolic function in participants with metabolic syndrome—results from a 6-month, double-blind, randomized controlled trial, The American Journal of Clinical Nutrition, Volume 109, Issue 6, June 2019, Pages 1535–1545, https://doi.org/10.1093/ajcn/nqy380

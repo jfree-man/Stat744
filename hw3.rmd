@@ -98,7 +98,7 @@ dat4 <- (dat
 ```
 
 ```{r, fig.dim=c(10,8)}
-gg1<-(ggplot(dat2, aes(y = Mean, x = factor(Time, levels = c("Before", "After")), 
+gg1 <- (ggplot(dat2, aes(y = Mean, x = factor(Time, levels = c("Before", "After")), 
                        colour = factor(Treatment, levels = c("Placebo", "HalfCup", "OneCup"))))
       + geom_point(aes(group = Treatment), size=4, alpha=0.7)
       + geom_line(aes(group = Treatment))
@@ -122,7 +122,7 @@ print(gg1)
 
 
 ```{r, fig.dim=c(10,8)}
-gg2<-(ggplot(dat4, aes(y = Mean, x = factor(Treatment, levels = c("Placebo", "HalfCup", "OneCup"))))
+gg2 <- (ggplot(dat4, aes(y = Mean, x = factor(Treatment, levels = c("Placebo", "HalfCup", "OneCup"))))
       + geom_point(aes(group = Treatment,
                        colour = factor(Treatment, levels = c("Placebo", "HalfCup", "OneCup"))), 
                    size=4

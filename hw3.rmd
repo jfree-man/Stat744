@@ -98,10 +98,14 @@ dat4 <- (dat
 ```
 
 ```{r, fig.dim=c(10,8)}
+dat2 <- (dat2
+	%>% mutate(tf =  factor(Treatment, levels = c("Placebo", "HalfCup", "OneCup")))
+)
+
 gg1 <- (ggplot(dat2, aes(y = Mean, x = factor(Time, levels = c("Before", "After")), 
-                       colour = factor(Treatment, levels = c("Placebo", "HalfCup", "OneCup"))))
+                       colour=tf))
       + geom_point(aes(group = Treatment), size=4, alpha=0.7)
-      + geom_line(aes(group = Treatment))
+      + geom_line(aes(group = Treatment, linetype=tf))
       + facet_grid(cols = vars(factor(Parameter, 
                                       levels = t(dat3))))# use ordering from dat3
       + facet_wrap(~ factor(Parameter, 
@@ -163,3 +167,5 @@ The plots are visually appealing, and I appreciate the difficulties with orderin
 It would be nice if you tried to figure out why some plots on the top seem to have only 1 or 2 lines. Probably some are just on top of each other (I think Ben provided some hints about what to do about that recently) – but it's super-weird how many of the starting points are apparently exactly the same, and yet not all of them.
 
 Grade: 2/3
+
+PS: Added an aesthetic mapping with Ben's help; looks like the missing data are really missing -- but why?

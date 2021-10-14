@@ -155,3 +155,11 @@ It might also be worth exploring this data by combining parameters that share th
 ### References
 
 **[1]** Peter J Curtis, Vera van der Velpen, Lindsey Berends, Amy Jennings, Martin Feelisch, A Margot Umpleby, Mark Evans, Bernadette O Fernandez, Mia S Meiss, Magdalena Minnion, John Potter, Anne-Marie Minihane, Colin D Kay, Eric B Rimm, Aedín Cassidy, Blueberries improve biomarkers of cardiometabolic function in participants with metabolic syndrome—results from a 6-month, double-blind, randomized controlled trial, The American Journal of Clinical Nutrition, Volume 109, Issue 6, June 2019, Pages 1535–1545, https://doi.org/10.1093/ajcn/nqy380
+
+## JD
+
+The plots are visually appealing, and I appreciate the difficulties with ordering. It's hard to make sense of this information without knowing something of the biological importance of these variables. That said, it really doesn't make sense to order by differences that different units (or to ever directly compare things with different units).
+
+It would be nice if you tried to figure out why some plots on the top seem to have only 1 or 2 lines. Probably some are just on top of each other (I think Ben provided some hints about what to do about that recently) – but it's super-weird how many of the starting points are apparently exactly the same, and yet not all of them.
+
+Grade: 2/3

@@ -42,17 +42,22 @@ I included year, region of the US (Northeast, Midwest, South or West), and the f
 
 ```{r model, echo=FALSE, message=FALSE, fig.dim = c(6,4)}
 #fit the model
-m0 <- lm(log(yieldpercol) ~ year + Region_fct + nCLOTHIANIDIN + nIMIDACLOPRID + nTHIAMETHOXAM + nACETAMIPRID + nTHIACLOPRID, data=dat)
-a0 <- augment(m0,data=dat)
+m0 <- lm(log(yieldpercol) ~ year + Region_fct + nCLOTHIANIDIN + nIMIDACLOPRID + nTHIAMETHOXAM + nACETAMIPRID + nTHIACLOPRID, data = dat)
+
+a0 <- augment(m0,data = dat)
 
 #looking for model mis-specification
 #bias - look at residuals
-g1 <- (ggplot(a0,aes(.fitted,.resid)) +
-    geom_point(alpha=0.1)+geom_smooth())
+g1 <- (ggplot(a0,aes(.fitted,.resid)) 
+       + geom_point(alpha = 0.1)
+       + geom_smooth()
+       )
 
 #look for heteroscedasticity
-g2 <- ggplot(a0,aes(.fitted,sqrt(abs(.std.resid))))+
-    geom_point()+geom_smooth()
+g2 <- (ggplot(a0,aes(.fitted,sqrt(abs(.std.resid))))
+       + geom_point()
+       + geom_smooth()
+       )
 grid.arrange(g1, g2, ncol=2, nrow=1)
 
 #look for outliers
@@ -79,47 +84,38 @@ m0_coef <- (tidy(m0)
 
 # plot neonic coeffcients
 coef_plot <- (dwplot(m0_coef)
-             + geom_vline(xintercept = 0, lty=2)
+             + geom_vline(xintercept = 0, lty = 2)
              + theme_bw()
-             + theme(legend.position = "none", aspect.ratio = 0.2,
-                               # plot.margin=margin(0,4,-0,0, "mm"))
-                              # plot.margin=grid::unit(c(-70,4,-50,0), "mm")
-                     )
-
+             + theme(legend.position = "none", aspect.ratio = 0.2)
              + ggtitle("Scaled Regression Coefficients for Neonics with 95% CI")
             )
 
 print(coef_plot)
 
-#ggsave(coef_plot, width=6,height=2)
-
-
-#perhaps don't scale
-#
 ```
  
 I chose to scale the coefficients, even though all pesticides use the same units, because the unscaled plot had large error bars that made it difficult to see some of the predictors. I chose not to exponentiate the coefficients, because although it's always best to represent the graph in original units, the exponeniated graph shows approximately the same information. In addition, most viewers are used to seeing the coefficients centered around x=0 instead of x=1, and the intention of the plot is not to draw exact coefficient estimates. 
 
 From the coefficient plot, we can say that there is no significant evidence to suggest that Acetamiprid, Imidacloprid and Thiacloprid have an effect on honey yield per colony. There is evidence to suggest that the geometric mean of honey yield per colony increases with the use of Thiamethoxam with all other variables held constant, and decreases with the use of Clothianidin with all other variables held constant.
 
-```{r, echo=FALSE, message=FALSE, warning=FALSE}
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.dim = c(8,5)}
 
 #marginal predicted response for Clothianidin
-gg_cl<-ggemmeans(m0, 
+gg_cl <- ggemmeans(m0, 
                 terms = "nCLOTHIANIDIN",
                 back.transform = TRUE) #to put response back in original units
 #marginal predicted response for Thiamethoxam
-gg_thiam<-ggemmeans(m0, 
+gg_thiam <- ggemmeans(m0, 
                    terms = "nTHIAMETHOXAM",
                    back.transform = TRUE) #to put response back in original units
 
 #plot for marginal predicted response for Clothianidin
-ef1<-(ggplot(gg_cl, aes(x = x, y = predicted)) 
+ef1 <- (ggplot(gg_cl, aes(x = x, y = predicted)) 
       + geom_line()
       #add confidence ban
-      + geom_ribbon( aes(ymin = conf.low, ymax = conf.high), fill="blue", alpha = 0.15)
+      + geom_ribbon( aes(ymin = conf.low, ymax = conf.high), fill = "blue", alpha = 0.15)
       #add data in
-      + geom_point(data = dat, aes(x = nCLOTHIANIDIN, y=yieldpercol), alpha = 0.2)
+      + geom_point(data = dat, aes(x = nCLOTHIANIDIN, y = yieldpercol), alpha = 0.2)
       + ggtitle("Predicted honey yeild per colony")
       + xlab("Clothianidin (kg)")
       + ylab("Honey yield per colony (lbs)")
@@ -129,10 +125,10 @@ ef1<-(ggplot(gg_cl, aes(x = x, y = predicted))
 )
 
 #plot for marginal predicted response for Thiamethoxam
-ef2<-(ggplot(gg_thiam, aes(x = x, y = predicted)) 
+ef2 <- (ggplot(gg_thiam, aes(x = x, y = predicted)) 
       + geom_line()
-      + geom_ribbon( aes(ymin = conf.low, ymax = conf.high), fill="blue", alpha = 0.15)
-      + geom_point(data = dat, aes(x = nTHIAMETHOXAM, y=yieldpercol), alpha = 0.2)
+      + geom_ribbon( aes(ymin = conf.low, ymax = conf.high), fill = "blue", alpha = 0.15)
+      + geom_point(data = dat, aes(x = nTHIAMETHOXAM, y = yieldpercol), alpha = 0.2)
       + ggtitle("Predicted honey yeild per colony")
       + xlab("Thiamethoxam (kg)")
       + ylab("Honey yield per colony (lbs)")

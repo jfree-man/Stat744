@@ -1,0 +1,153 @@
+---
+title: "hw4"
+author: "Jennifer Freeman"
+date: "18/10/2021"
+output: html_document
+---
+# Description and Model Diagnotics 
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(broom)
+library(car)
+library(dotwhisker)
+library(gridExtra)
+library(ggeffects)
+library(effects)
+library(emmeans)
+library(cowplot)
+library(scales)
+```
+
+The dataset contains information on honeybee colonies, honey economics and the amount of neonic pesticides applied in the US per year and state from 1994-2016. The data set was found on Kaggle and was combined from USGS and USDA data [1]. I am interested in exploring the use of Neonic pesticides on honey yield. There have been a weatlth of studies on the negative effects of neonics on honey bees, and there is evidence that exposure can effect activity and behaviour [2]. There were five Neonic pesticides included in this data set: Acetamiprid, Clothianidin, Imidacloprid, Thiacloprid and Thiamethoxam.
+
+I chose to log transform the response variable yield per colony, `yieldpercol`, since the original model fit produced a qq-plot that suggested this might help. See the histogram of the non-log transformed data below.
+
+```{r data, echo=FALSE, fig.dim=c(4,4)}
+
+dat <- read.csv("vHoneyNeonic_v03.csv")
+
+#remove NA's in Neonics, can't be sure if no Neonics were used or no data available
+dat <- (dat 
+    %>% filter(!is.na(nAllNeonic)) 
+    %>% mutate(Region_fct = factor(Region), log_yeild = log(yieldpercol))
+    %>% slice(-c(69, 75, 317, 516, 825)) #remove outliers
+)
+
+#histogram of yield per colony
+hist(dat$yieldpercol, breaks=20)
+```
+
+I included year, region of the US (Northeast, Midwest, South or West), and the five neonic pesticides (expressed in kg) as predictors in a linear model. After fitting the model I chose to remove five records based on the output from the `car::influencePlot()` function. After re-fitting I did not remove any more records. The residual vs. fitted plot and scale-location plot both had a fairly flat smoothed curve with the residuals approximately randomly distributed. Finally, the qq-plot looked good enough to continue using this model, although there are potentially additional outliers to consider.
+
+```{r model, echo=FALSE, message=FALSE, fig.dim = c(6,4)}
+#fit the model
+m0 <- lm(log(yieldpercol) ~ year + Region_fct + nCLOTHIANIDIN + nIMIDACLOPRID + nTHIAMETHOXAM + nACETAMIPRID + nTHIACLOPRID, data=dat)
+a0 <- augment(m0,data=dat)
+
+#looking for model mis-specification
+#bias - look at residuals
+g1 <- (ggplot(a0,aes(.fitted,.resid)) +
+    geom_point(alpha=0.1)+geom_smooth())
+
+#look for heteroscedasticity
+g2 <- ggplot(a0,aes(.fitted,sqrt(abs(.std.resid))))+
+    geom_point()+geom_smooth()
+grid.arrange(g1, g2, ncol=2, nrow=1)
+
+#look for outliers
+ip <- (car::influencePlot(m0))
+
+#distributional assumptions
+qq <- car::qqPlot(m0)
+
+```
+
+# Inferential Plots
+
+```{r, echo=FALSE, fig.dim=c(8,2.5)}
+#plot of regression coefficients
+
+#tidy coefficients
+m0_coef <- (tidy(m0) 
+            %>% by_2sd(dat) #scale estimates
+            %>% filter(str_detect(term, "^n")) #only keep neonics
+            %>% arrange(estimate) #order by estimate
+            %>% mutate(term = str_to_title(gsub("^n", "", term))) #remove leading n, and convert case
+            #%>% mutate(estimate = exp(estimate)) #exponentiate to interpret changes in response
+            )
+
+# plot neonic coeffcients
+coef_plot <- (dwplot(m0_coef)
+             + geom_vline(xintercept = 0, lty=2)
+             + theme_bw()
+             + theme(legend.position = "none", aspect.ratio = 0.2,
+                               # plot.margin=margin(0,4,-0,0, "mm"))
+                              # plot.margin=grid::unit(c(-70,4,-50,0), "mm")
+                     )
+
+             + ggtitle("Scaled Regression Coefficients for Neonics with 95% CI")
+            )
+
+print(coef_plot)
+
+#ggsave(coef_plot, width=6,height=2)
+
+
+#perhaps don't scale
+#
+```
+ 
+I chose to scale the coefficients, even though all pesticides use the same units, because the unscaled plot had large error bars that made it difficult to see some of the predictors. I chose not to exponentiate the coefficients, because although it's always best to represent the graph in original units, the exponeniated graph shows approximately the same information. In addition, most viewers are used to seeing the coefficients centered around x=0 instead of x=1, and the intention of the plot is not to draw exact coefficient estimates. 
+
+From the coefficient plot, we can say that there is no significant evidence to suggest that Acetamiprid, Imidacloprid and Thiacloprid have an effect on honey yield per colony. There is evidence to suggest that the geometric mean of honey yield per colony increases with the use of Thiamethoxam with all other variables held constant, and decreases with the use of Clothianidin with all other variables held constant.
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+#marginal predicted response for Clothianidin
+gg_cl<-ggemmeans(m0, 
+                terms = "nCLOTHIANIDIN",
+                back.transform = TRUE) #to put response back in original units
+#marginal predicted response for Thiamethoxam
+gg_thiam<-ggemmeans(m0, 
+                   terms = "nTHIAMETHOXAM",
+                   back.transform = TRUE) #to put response back in original units
+
+#plot for marginal predicted response for Clothianidin
+ef1<-(ggplot(gg_cl, aes(x = x, y = predicted)) 
+      + geom_line()
+      #add confidence ban
+      + geom_ribbon( aes(ymin = conf.low, ymax = conf.high), fill="blue", alpha = 0.15)
+      #add data in
+      + geom_point(data = dat, aes(x = nCLOTHIANIDIN, y=yieldpercol), alpha = 0.2)
+      + ggtitle("Predicted honey yeild per colony")
+      + xlab("Clothianidin (kg)")
+      + ylab("Honey yield per colony (lbs)")
+      + theme_bw()
+      + scale_x_continuous(labels = number)
+      + xlim(0,60000)
+)
+
+#plot for marginal predicted response for Thiamethoxam
+ef2<-(ggplot(gg_thiam, aes(x = x, y = predicted)) 
+      + geom_line()
+      + geom_ribbon( aes(ymin = conf.low, ymax = conf.high), fill="blue", alpha = 0.15)
+      + geom_point(data = dat, aes(x = nTHIAMETHOXAM, y=yieldpercol), alpha = 0.2)
+      + ggtitle("Predicted honey yeild per colony")
+      + xlab("Thiamethoxam (kg)")
+      + ylab("Honey yield per colony (lbs)")
+      + theme_bw()
+)
+
+#print both plots
+cowplot::plot_grid(ef1, ef2)
+
+```
+
+The marginal predicted response curves for both significant pesticide predictors show the predicted curve with 95% confidence bands superimposed with the observed data. I chose to exclude Clothianidin data points greater than 60,000kg in the plot, as the few large values made it difficult to view the majority of the data. In general, the density of data points makes it difficult to tell how well the predicted curve follows the data. 
+
+# References
+
+[1] Zmith, K. (2018). Honeybees and Neonic Pesticides. Version 3. Retrieved October 18, 2021 from https://www.kaggle.com/kevinzmith/honey-with-neonic-pesticide
+
+[2] Cresswell, J. E. (2011). A meta-analysis of experiments testing the effects of a neonicotinoid insecticide (imidacloprid) on honey bees. Ecotoxicology, 20(1), 149.

@@ -19,7 +19,7 @@ library(cowplot)
 library(scales)
 ```
 
-The dataset contains information on honeybee colonies, honey economics and the amount of neonic pesticides applied in the US per year and state from 1994-2016. The data set was found on Kaggle and was combined from USGS and USDA data [1]. I am interested in exploring the use of Neonic pesticides on honey yield. There have been a weatlth of studies on the negative effects of neonics on honey bees, and there is evidence that exposure can effect activity and behaviour [2]. There were five Neonic pesticides included in this data set: Acetamiprid, Clothianidin, Imidacloprid, Thiacloprid and Thiamethoxam.
+The dataset contains information on honeybee colonies, honey economics and the amount of neonic pesticides applied in the US per year and state from 1994-2016. (**BMB: maybe say "neonicotinoid" the first time this is referred to?**) The data set was found on Kaggle and was combined from USGS and USDA data [1]. I am interested in exploring the use of Neonic pesticides on honey yield. There have been a wealth of studies on the negative effects of neonics on honey bees, and there is evidence that exposure can affect activity and behaviour [2]. There were five Neonic pesticides included in this data set: Acetamiprid, Clothianidin, Imidacloprid, Thiacloprid and Thiamethoxam.
 
 I chose to log transform the response variable yield per colony, `yieldpercol`, since the original model fit produced a qq-plot that suggested this might help. See the histogram of the non-log transformed data below.
 
@@ -29,20 +29,23 @@ dat <- read.csv("vHoneyNeonic_v03.csv")
 
 #remove NA's in Neonics, can't be sure if no Neonics were used or no data available
 dat <- (dat 
-    %>% filter(!is.na(nAllNeonic)) 
-    %>% mutate(Region_fct = factor(Region), log_yeild = log(yieldpercol))
-    %>% slice(-c(69, 75, 317, 516, 825)) #remove outliers
+  %>% filter(!is.na(nAllNeonic))   ## BMB: can also do this 'tidily' with drop_na(nAllNeonic)
+  %>% mutate(Region_fct = factor(Region), log_yield = log(yieldpercol))
+  ## BMB: would be good to do this in a reproducible/explicable way (how were these chosen? did you drop
+  ## them after looking at the diagnostic plots? is there a way to come up with an automatic rule?)
+  %>% slice(-c(69, 75, 317, 516, 825)) #remove outliers
 )
 
 #histogram of yield per colony
 hist(dat$yieldpercol, breaks=20)
 ```
 
-I included year, region of the US (Northeast, Midwest, South or West), and the five neonic pesticides (expressed in kg) as predictors in a linear model. After fitting the model I chose to remove five records based on the output from the `car::influencePlot()` function. After re-fitting I did not remove any more records. The residual vs. fitted plot and scale-location plot both had a fairly flat smoothed curve with the residuals approximately randomly distributed. Finally, the qq-plot looked good enough to continue using this model, although there are potentially additional outliers to consider.
+I included year, region of the US (Northeast, Midwest, South or West), and the five neonic pesticides (expressed in kg) as predictors in a linear model. After fitting the model I chose to remove five records based on the output from the `car::influencePlot()` function. (**BMB: OK. In "real life" you should have a much stronger argument for removing outliers.**) After re-fitting I did not remove any more records. The residual vs. fitted plot and scale-location plot both had a fairly flat smoothed curve with the residuals approximately randomly distributed. Finally, the qq-plot looked good enough to continue using this model, although there are potentially additional outliers to consider.
 
 ```{r model, echo=FALSE, message=FALSE, fig.dim = c(6,4)}
 #fit the model
 m0 <- lm(log(yieldpercol) ~ year + Region_fct + nCLOTHIANIDIN + nIMIDACLOPRID + nTHIAMETHOXAM + nACETAMIPRID + nTHIACLOPRID, data = dat)
+## BMB: if you want to fit everything you can use log(yieldpercol) ~ . , or log(yieldpercol) ~ . - <vars to omit>
 
 a0 <- augment(m0,data = dat)
 
@@ -75,12 +78,12 @@ qq <- car::qqPlot(m0)
 
 #tidy coefficients
 m0_coef <- (tidy(m0) 
-            %>% by_2sd(dat) #scale estimates
-            %>% filter(str_detect(term, "^n")) #only keep neonics
-            %>% arrange(estimate) #order by estimate
-            %>% mutate(term = str_to_title(gsub("^n", "", term))) #remove leading n, and convert case
-            #%>% mutate(estimate = exp(estimate)) #exponentiate to interpret changes in response
-            )
+  %>% by_2sd(dat) #scale estimates
+  %>% filter(str_detect(term, "^n")) #only keep neonics
+  %>% arrange(estimate) #order by estimate
+  %>% mutate(term = str_to_title(gsub("^n", "", term))) #remove leading n, and convert case
+  ##%>% mutate(estimate = exp(estimate)) #exponentiate to interpret changes in response
+)
 
 # plot neonic coeffcients
 coef_plot <- (dwplot(m0_coef)
@@ -91,12 +94,28 @@ coef_plot <- (dwplot(m0_coef)
             )
 
 print(coef_plot)
-
 ```
- 
+**BMB: it took me a little while to convince myself that this is OK.
+By the way, if back-transforming coefficients, you should be careful to back-transform confidence intervals in the same way, or transform SEs by multiplying by the derivative of the transformation - don't back-transform SEs by exponentiating!**
+
+```{r}
+nc <- names(coef(m0))
+vv <- geom_vline(xintercept=0, lty=2)
+plot_grid(dwplot(m0, vars_order = grep("^n", nc, value = TRUE)) + vv ,
+          dwplot(m0, vars_order = grep("^n", nc, value = TRUE), by_2sd = TRUE) + vv,
+          coef_plot)
+```
+
 I chose to scale the coefficients, even though all pesticides use the same units, because the unscaled plot had large error bars that made it difficult to see some of the predictors. I chose not to exponentiate the coefficients, because although it's always best to represent the graph in original units, the exponeniated graph shows approximately the same information. In addition, most viewers are used to seeing the coefficients centered around x=0 instead of x=1, and the intention of the plot is not to draw exact coefficient estimates. 
 
 From the coefficient plot, we can say that there is no significant evidence to suggest that Acetamiprid, Imidacloprid and Thiacloprid have an effect on honey yield per colony. There is evidence to suggest that the geometric mean of honey yield per colony increases with the use of Thiamethoxam with all other variables held constant, and decreases with the use of Clothianidin with all other variables held constant.
+
+**BMB: OK conclusion, although the emphasis on significance is still slightly stronger than I'd like. (Note you haven't done multiple-comparisons correction here: adjusting *confidence intervals* for mult comp is a bit harder, so I'll just look at the Holm-adjusted p-values)
+
+```{r}
+p.adjust(m0_coef$p.value, "holm")
+```
+
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.dim = c(8,5)}
 
@@ -115,8 +134,8 @@ ef1 <- (ggplot(gg_cl, aes(x = x, y = predicted))
       #add confidence ban
       + geom_ribbon( aes(ymin = conf.low, ymax = conf.high), fill = "blue", alpha = 0.15)
       #add data in
-      + geom_point(data = dat, aes(x = nCLOTHIANIDIN, y = yieldpercol), alpha = 0.2)
-      + ggtitle("Predicted honey yeild per colony")
+      + stat_sum(data = dat, aes(x = nCLOTHIANIDIN, y = yieldpercol), alpha = 0.2)
+      + ggtitle("Predicted honey yield per colony")
       + xlab("Clothianidin (kg)")
       + ylab("Honey yield per colony (lbs)")
       + theme_bw()
@@ -128,8 +147,8 @@ ef1 <- (ggplot(gg_cl, aes(x = x, y = predicted))
 ef2 <- (ggplot(gg_thiam, aes(x = x, y = predicted)) 
       + geom_line()
       + geom_ribbon( aes(ymin = conf.low, ymax = conf.high), fill = "blue", alpha = 0.15)
-      + geom_point(data = dat, aes(x = nTHIAMETHOXAM, y = yieldpercol), alpha = 0.2)
-      + ggtitle("Predicted honey yeild per colony")
+      + stat_sum(data = dat, aes(x = nTHIAMETHOXAM, y = yieldpercol), alpha = 0.2)
+      + ggtitle("Predicted honey yield per colony")
       + xlab("Thiamethoxam (kg)")
       + ylab("Honey yield per colony (lbs)")
       + theme_bw()
@@ -137,10 +156,15 @@ ef2 <- (ggplot(gg_thiam, aes(x = x, y = predicted))
 
 #print both plots
 cowplot::plot_grid(ef1, ef2)
-
 ```
 
 The marginal predicted response curves for both significant pesticide predictors show the predicted curve with 95% confidence bands superimposed with the observed data. I chose to exclude Clothianidin data points greater than 60,000kg in the plot, as the few large values made it difficult to view the majority of the data. In general, the density of data points makes it difficult to tell how well the predicted curve follows the data. 
+
+**BMB: this is pretty good. It would be better to figure out a way to do it by faceting or otherwise avoiding repeating code. Ideally I'd like to see it for all 5 pesticides (I agree that the effects of the other three are not just non-significant but also smaller, but it's better to try not to dichotomize, when possible ...)**
+
+**mark: 2.3/3**
+
+**BMB: by the way, Rmarkdown can automatically format bibliographies: https://bookdown.org/yihui/bookdown/citations.html, https://bookdown.org/yihui/rmarkdown-cookbook/bibliography.html**
 
 # References
 

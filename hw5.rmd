@@ -42,9 +42,12 @@ dat2 <- (as_tibble(dat[[1]])
 )
 
 #create plot
-gg <- (ggplot(dat2, aes(x=Day_Month, y=Mean, colour = Year))
+gg <- (ggplot(dat2, aes(x=Day_Month, y=Mean, colour = Year
+                        #,text = paste("Month_Day:", format(Day_Month, "%d-%b")) #when I use the text aes to pass to the tooltip the geom_lines don't get added to the plot
+                        ))
        + geom_point(alpha=0.4)#how do I set alpha=1 in ggplotly legend
        + geom_line(aes(y=MA_2))
+       #+ geom_line(aes(y=MA_2, text = paste("Month_Day:", format(Day_Month, "%d-%b"))))
        + geom_line(aes(y=MA_3), lty=6)
        # how do I add linetype aesthetic to ggplotly legend
        + geom_text(aes(x=as.Date("2000-10-17"), 
@@ -63,13 +66,15 @@ gg <- (ggplot(dat2, aes(x=Day_Month, y=Mean, colour = Year))
 
 
 
-(ggplotly(gg)
+(ggplotly(gg
+          #,tooltip = c("text", "Year", "y")
+          )
  #  %>% layout(legend=list(aes(alpha=1)))
 )
 
 ```
 
 
-The data set contains mean number of monarch butterflies per year in Cape May, NJ on each day from September 1st to October 31st through 1992-2004. There were 10 records with missing data, and these were removed. The intention of the plot was to show both the cyclical changes per season, and the yearly changes. Originally an animated plot by year was used, but it was difficult to compare the year by year changes. This interactive plot was chosen so that a more direct comparison could be made about cyclical and yearly differences and because it would be difficult to view all data at once in a non-iteractive sense. Ideally, it would be better if the default year selection for this graph showed only two years worth of data, as viewing all 13 years worth of data at once is not readable.
+The data set contains mean number of monarch butterflies per year in Cape May, NJ on each day from September 1st to October 31st through 1992-2004. There were 10 records with missing data, and these were removed. The intention of the plot was to show both the cyclical changes per season, and the yearly changes. Originally an animated plot by year was used, but it was difficult to compare the year by year changes. This interactive plot was chosen so that a more direct comparison could be made about cyclical and yearly differences and because it would be difficult to view all data at once in a non-interactive sense. Ideally, it would be better if the default year selection for this graph showed only two years worth of data, as viewing all 13 years worth of data at once is not readable.
 
-It was noted in the paper that there were some cyclical trends at 2 or 3 days, so moving averages were used to determine if these trends were visible and would line up across years. The data points were chosen to be subtle but visible so the moving average lines would stand-out. It is unfortunate that the `alpha` aesthetic from the data points carries over to the legend because it makes the legend too faint. The y-axis was scaled with a square root transformation to view the smaller values of the data while keeping the zero counts. The tooltip needs to be modified to accurately reflect the day-month values without the year.
+It was noted in the paper that there were some cyclical trends at 2 or 3 days, so moving averages were used to determine if these trends were visible and would line up across years. The data points were chosen to be subtle but visible so the moving average lines would stand-out. It is unfortunate that the `alpha` aesthetic from the data points carries over to the legend because it makes the legend too faint. The y-axis was scaled with a square root transformation since the data was skewed and it was important to keep the 0 counts. The tooltip needs to be modified to accurately reflect the day-month values without the year. In addition, incorporating the line types in the legend, tooltip or using direct labeling would be best. 

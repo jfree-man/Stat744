@@ -5,6 +5,12 @@ date: "25/10/2021"
 output: html_document
 ---
 
+JD: It's cool that you started all the way from extract_tables, and there are several good ideas in the figure. But the final figure is way too crowded to be good dataviz. The scale is also weird; I know scales can be hard, but it's impossible to even guess what the scale is doing, or how to read the bottom range, before you hover. A log-plus-one scale would probably have been better, but you should also consider manually adding tick marks when it's clear that some are needed. I guess you had trouble with the tooltips. It's always good (if not too difficult) to limit numbers in tooltips to 3 or 4 significant figures. You might want to post your alpha problem in Teams in case Ben knows the answer. 
+
+The text problem confuses me. You should be able to add it to the ggplot without needing to add it to the lines. You can see https://github.com/mac-theobio/DataViz/blob/main/docs/code/intSmoke.R for an example where we passed things along using "label".
+
+Grade 2.1/3
+
 ```{r setup, include=FALSE, warnings=FALSE}
 library(tidyverse)
 library(tabulizer)
